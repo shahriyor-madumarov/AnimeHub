@@ -1,0 +1,30 @@
+import { createClient, User, Session, AuthError } from '@supabase/supabase-js';
+
+const rawUrl = (import.meta.env.VITE_SUPABASE_URL || (import.meta.env as any).SUPABASE_URL || '').trim();
+const rawAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || (import.meta.env as any).SUPABASE_ANON_KEY || '').trim();
+
+// Format URL if protocol is omitted
+const supabaseUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+const supabaseAnonKey = rawAnonKey;
+
+export const isSupabaseConfigured: boolean = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  supabaseUrl.startsWith('http') &&
+  !supabaseUrl.includes('placeholder')
+);
+
+// Fallback dummy URL to prevent createClient from crashing if env vars are not set during preview
+const safeUrl = isSupabaseConfigured ? supabaseUrl : 'https://placeholder-project.supabase.co';
+const safeKey = isSupabaseConfigured ? supabaseAnonKey : 'placeholder-anon-key';
+
+export const supabase = createClient(safeUrl, safeKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  },
+});
+
+export type { User, Session, AuthError };

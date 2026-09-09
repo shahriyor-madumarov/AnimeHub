@@ -1,0 +1,6 @@
+{
+  "name": "AnimeHub",
+  "description": "A modern, premium anime, manga, and manhwa discovery platform featuring trending titles, detailed catalogs, news, and immersive previews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
