@@ -6,7 +6,11 @@ import { MediaItem, PaginatedResponse, FilterParams, NewsArticle } from '../type
  */
 
 async function fetchJson<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+  // Guarantee that same-origin API requests always target /api/*
   let url = endpoint;
+  if (!url.startsWith('/api') && !url.startsWith('http')) {
+    url = url.startsWith('/') ? `/api${url}` : `/api/${url}`;
+  }
   if (params) {
     const searchParams = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
