@@ -3,8 +3,21 @@ import { createClient, User, Session, AuthError } from '@supabase/supabase-js';
 const rawUrl = (import.meta.env.VITE_SUPABASE_URL || (import.meta.env as any).SUPABASE_URL || '').trim();
 const rawAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || (import.meta.env as any).SUPABASE_ANON_KEY || '').trim();
 
-// Format URL if protocol is omitted
-const supabaseUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+function formatSupabaseUrl(url: string): string {
+  if (!url) return '';
+  const clean = url.trim().replace(/\/+$/, '');
+  const withoutProtocol = clean.replace(/^https?:\/\//, '');
+  if (!withoutProtocol.includes('.')) {
+    return `https://${withoutProtocol}.supabase.co`;
+  }
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    return `https://${clean}`;
+  }
+  return clean;
+}
+
+// Format URL if protocol or domain is omitted
+const supabaseUrl = formatSupabaseUrl(rawUrl);
 const supabaseAnonKey = rawAnonKey;
 
 export const isSupabaseConfigured: boolean = Boolean(

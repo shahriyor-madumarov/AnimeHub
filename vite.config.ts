@@ -3,9 +3,23 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
+function formatSupabaseUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  const clean = url.trim().replace(/\/+$/, '');
+  const withoutProtocol = clean.replace(/^https?:\/\//, '');
+  if (!withoutProtocol.includes('.')) {
+    return `https://${withoutProtocol}.supabase.co`;
+  }
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    return `https://${clean}`;
+  }
+  return clean;
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ['VITE_', 'SUPABASE_']);
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || env.SUPABASE_URL;
+  const rawSupabaseUrl = process.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || env.SUPABASE_URL;
+  const supabaseUrl = formatSupabaseUrl(rawSupabaseUrl);
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY;
 
   return {
