@@ -180,84 +180,88 @@ export function parseRssFeed(xml: string, source: RssFeedConfig): NewsArticle[] 
   const rawItems = xml.split(/<item[\s>]/i).slice(1);
 
   for (const itemBlock of rawItems) {
-    const raw = itemBlock.split(/<\/item>/i)[0];
-    if (!raw) continue;
-
-    const rawTitle = getTagContent(raw, 'title');
-    const title = decodeEntities(rawTitle);
-    if (!title) continue;
-
-    const rawLink = getTagContent(raw, 'link') || getTagContent(raw, 'guid');
-    const sourceUrl = decodeEntities(rawLink).trim();
-    if (!sourceUrl) continue;
-
-    const rawDesc = getTagContent(raw, 'description');
-    const rawContent = getTagContent(raw, 'content:encoded') || rawDesc;
-    const plainDesc = stripHtml(decodeEntities(rawDesc));
-    const plainContent = stripHtml(decodeEntities(rawContent));
-    const summary = plainDesc || plainContent.slice(0, 240);
-    const excerpt = (summary.length > 200 ? summary.slice(0, 197) + '...' : summary) || title;
-
-    const rawPubDate =
-      getTagContent(raw, 'pubDate') ||
-      getTagContent(raw, 'dc:date') ||
-      getTagContent(raw, 'updated');
-    let publishedAt: string;
     try {
-      const parsed = new Date(rawPubDate);
-      publishedAt = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
-    } catch {
-      publishedAt = new Date().toISOString();
+      const raw = itemBlock.split(/<\/item>/i)[0];
+      if (!raw) continue;
+
+      const rawTitle = getTagContent(raw, 'title');
+      const title = decodeEntities(rawTitle);
+      if (!title) continue;
+
+      const rawLink = getTagContent(raw, 'link') || getTagContent(raw, 'guid');
+      const sourceUrl = decodeEntities(rawLink).trim();
+      if (!sourceUrl) continue;
+
+      const rawDesc = getTagContent(raw, 'description');
+      const rawContent = getTagContent(raw, 'content:encoded') || rawDesc;
+      const plainDesc = stripHtml(decodeEntities(rawDesc));
+      const plainContent = stripHtml(decodeEntities(rawContent));
+      const summary = plainDesc || plainContent.slice(0, 240);
+      const excerpt = (summary.length > 200 ? summary.slice(0, 197) + '...' : summary) || title;
+
+      const rawPubDate =
+        getTagContent(raw, 'pubDate') ||
+        getTagContent(raw, 'dc:date') ||
+        getTagContent(raw, 'updated');
+      let publishedAt: string;
+      try {
+        const parsed = new Date(rawPubDate);
+        publishedAt = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+      } catch {
+        publishedAt = new Date().toISOString();
+      }
+
+      const rawAuthor = getTagContent(raw, 'author') || getTagContent(raw, 'dc:creator');
+      const authorName = decodeEntities(rawAuthor) || source.name;
+
+      const rawCategory = getTagContent(raw, 'category');
+      const category = resolveCategory(rawCategory, title, plainContent);
+
+      // Extract tags from <category> occurrences
+      const categoryMatches = raw.match(/<category[^>]*>([\s\S]*?)<\/category>/gi) || [];
+      const tags = Array.from(
+        new Set(
+          categoryMatches
+            .map((c) => decodeEntities(c.replace(/<\/?category[^>]*>/gi, '').trim()))
+            .filter((t) => t.length > 0 && t.length < 40)
+        )
+      );
+      if (!tags.includes(source.name)) {
+        tags.unshift(source.name);
+      }
+
+      // Source image provided directly by RSS feed (NO random images)
+      const realImg = extractRealSourceImage(raw);
+
+      const id = generateDeterministicId(source.name, sourceUrl, title);
+      const words = (plainContent || summary).split(/\s+/).length;
+      const readMinutes = Math.max(1, Math.round(words / 180));
+      const readTime = `${readMinutes} min read`;
+
+      articles.push({
+        id,
+        title,
+        slug: id,
+        summary,
+        excerpt,
+        content: decodeEntities(rawContent) || summary,
+        image: realImg,
+        coverImage: realImg,
+        category,
+        author: {
+          name: authorName,
+          role: 'Editorial Staff',
+        },
+        readTime,
+        publishedAt,
+        tags,
+        sourceUrl,
+        sourceName: source.name,
+        source: source.name,
+      });
+    } catch (err: any) {
+      console.warn(`[RssNewsProvider] Skipping malformed RSS item from ${source.name}:`, err?.message);
     }
-
-    const rawAuthor = getTagContent(raw, 'author') || getTagContent(raw, 'dc:creator');
-    const authorName = decodeEntities(rawAuthor) || source.name;
-
-    const rawCategory = getTagContent(raw, 'category');
-    const category = resolveCategory(rawCategory, title, plainContent);
-
-    // Extract tags from <category> occurrences
-    const categoryMatches = raw.match(/<category[^>]*>([\s\S]*?)<\/category>/gi) || [];
-    const tags = Array.from(
-      new Set(
-        categoryMatches
-          .map((c) => decodeEntities(c.replace(/<\/?category[^>]*>/gi, '').trim()))
-          .filter((t) => t.length > 0 && t.length < 40)
-      )
-    );
-    if (!tags.includes(source.name)) {
-      tags.unshift(source.name);
-    }
-
-    // Source image provided directly by RSS feed (NO random images)
-    const realImg = extractRealSourceImage(raw);
-
-    const id = generateDeterministicId(source.name, sourceUrl, title);
-    const words = (plainContent || summary).split(/\s+/).length;
-    const readMinutes = Math.max(1, Math.round(words / 180));
-    const readTime = `${readMinutes} min read`;
-
-    articles.push({
-      id,
-      title,
-      slug: id,
-      summary,
-      excerpt,
-      content: decodeEntities(rawContent) || summary,
-      image: realImg,
-      coverImage: realImg,
-      category,
-      author: {
-        name: authorName,
-        role: 'Editorial Staff',
-      },
-      readTime,
-      publishedAt,
-      tags,
-      sourceUrl,
-      sourceName: source.name,
-      source: source.name,
-    });
   }
 
   return articles;
@@ -291,7 +295,7 @@ export class RssNewsProvider implements INewsProvider {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
 
     try {
       const response = await fetch(source.url, {

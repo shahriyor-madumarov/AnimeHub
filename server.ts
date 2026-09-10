@@ -34,7 +34,9 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('[AnimeHub] Failed to start server:', err);
-  process.exit(1);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('[AnimeHub] Failed to start server:', err);
+    process.exit(1);
+  });
+}
