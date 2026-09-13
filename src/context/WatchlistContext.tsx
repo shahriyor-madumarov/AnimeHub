@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MediaItem, MediaType, SavedItemRow } from '../types';
 import { getSafeCoverImage, getSafeBannerImage } from '../lib/mediaImage';
 import { useAuth } from './AuthContext';
@@ -241,17 +241,17 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       // Guest state: Add to session memory and notify to sign in for persistence
       setWatchlistItems((prev) => {
-        const filtered = prev.filter((i) => i.id !== sanitized.id);
+        const filtered = prev.filter((i) => String(i.id) !== String(sanitized.id));
         return [sanitized, ...filtered];
       });
-      setWatchlistIds((prev) => (prev.includes(sanitized.id) ? prev : [sanitized.id, ...prev]));
+      setWatchlistIds((prev) => (prev.some((i) => String(i) === String(sanitized.id)) ? prev : [String(sanitized.id), ...prev]));
       showToast('Added to List', `"${sanitized.title}" was added. Sign in to save to your cloud library.`);
       return;
     }
 
     // Optimistic UI state update
     setWatchlistItems((prev) => {
-      const filtered = prev.filter((i) => i.id !== sanitized.id);
+      const filtered = prev.filter((i) => String(i.id) !== String(sanitized.id));
       const next = [sanitized, ...filtered];
       try {
         localStorage.setItem(`animehub_library_${user.id}`, JSON.stringify(next));
@@ -260,8 +260,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     });
 
     setWatchlistIds((prev) => {
-      if (prev.includes(sanitized.id)) return prev;
-      return [sanitized.id, ...prev];
+      if (prev.some((i) => String(i) === String(sanitized.id))) return prev;
+      return [String(sanitized.id), ...prev];
     });
 
     showToast('Saved to Library', `"${sanitized.title}" was saved to your library.`);
@@ -286,10 +286,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
   // Remove an item from the user's library
   const removeFromWatchlist = useCallback(async (id: string) => {
+    const idStr = String(id);
     // Optimistic UI state update
-    setWatchlistIds((prev) => prev.filter((itemId) => itemId !== id));
+    setWatchlistIds((prev) => prev.filter((itemId) => String(itemId) !== idStr));
     setWatchlistItems((prev) => {
-      const next = prev.filter((item) => item.id !== id);
+      const next = prev.filter((item) => String(item.id) !== idStr);
       if (user) {
         try {
           localStorage.setItem(`animehub_library_${user.id}`, JSON.stringify(next));
@@ -307,7 +308,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
           .from('saved_items')
           .delete()
           .eq('user_id', user.id)
-          .eq('media_id', id);
+          .eq('media_id', idStr);
 
         if (error) {
           console.warn('[AnimeHub Saved] Failed to remove from saved_items:', error.message);
@@ -318,7 +319,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, showToast]);
 
-  const isInWatchlist = useCallback((id: string) => watchlistIds.includes(id), [watchlistIds]);
+  const watchlistSet = useMemo(() => new Set(watchlistIds.map(String)), [watchlistIds]);
+
+  const isInWatchlist = useCallback((id: string) => watchlistSet.has(String(id)), [watchlistSet]);
 
   const toggleWatchlist = useCallback((item: MediaItem) => {
     if (isInWatchlist(item.id)) {
@@ -331,24 +334,41 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const openTrailer = useCallback((item: MediaItem) => setActiveTrailer(item), []);
   const closeTrailer = useCallback(() => setActiveTrailer(null), []);
 
+  const value = useMemo<WatchlistContextType>(
+    () => ({
+      watchlistIds,
+      watchlistItems,
+      addToWatchlist,
+      removeFromWatchlist,
+      isInWatchlist,
+      toggleWatchlist,
+      activeTrailer,
+      openTrailer,
+      closeTrailer,
+      toasts,
+      dismissToast,
+      showToast,
+      isLoading,
+    }),
+    [
+      watchlistIds,
+      watchlistItems,
+      addToWatchlist,
+      removeFromWatchlist,
+      isInWatchlist,
+      toggleWatchlist,
+      activeTrailer,
+      openTrailer,
+      closeTrailer,
+      toasts,
+      dismissToast,
+      showToast,
+      isLoading,
+    ]
+  );
+
   return (
-    <WatchlistContext.Provider
-      value={{
-        watchlistIds,
-        watchlistItems,
-        addToWatchlist,
-        removeFromWatchlist,
-        isInWatchlist,
-        toggleWatchlist,
-        activeTrailer,
-        openTrailer,
-        closeTrailer,
-        toasts,
-        dismissToast,
-        showToast,
-        isLoading,
-      }}
-    >
+    <WatchlistContext.Provider value={value}>
       {children}
     </WatchlistContext.Provider>
   );

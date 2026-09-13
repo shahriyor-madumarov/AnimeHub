@@ -35,6 +35,28 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Update canonical and og:url tags on route navigation without reloading
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const origin = window.location.origin;
+        const normalizedPath = currentPath.startsWith('/') ? currentPath : `/${currentPath}`;
+        const targetUrl = `${origin}${normalizedPath === '/' ? '/' : normalizedPath}`;
+
+        const canonical = document.querySelector('link[rel="canonical"]');
+        if (canonical) {
+          canonical.setAttribute('href', targetUrl);
+        }
+        const ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) {
+          ogUrl.setAttribute('content', targetUrl);
+        }
+      } catch {
+        // Safe fallback in restricted environments
+      }
+    }
+  }, [currentPath]);
+
   const navigate = (path: string) => {
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', path);

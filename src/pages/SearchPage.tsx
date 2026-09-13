@@ -104,22 +104,22 @@ export const SearchPage: React.FC = () => {
 
       // Populate from known allMediaItems if in watchlistIds
       allMediaItems.forEach((item) => {
-        if (watchlistIds.includes(item.id)) {
-          libraryMap.set(item.id, {
+        if (watchlistIds.some((id) => String(id) === String(item.id))) {
+          libraryMap.set(String(item.id), {
             ...item,
+            id: String(item.id),
             posterImage: getSafeCoverImage(item.posterImage),
           });
         }
       });
 
-      // Overlay with saved watchlist items (which preserve dynamic items and saved covers)
+      // Overlay with saved watchlist items (preserves dynamic items, manga, manhwa and saved covers)
       watchlistItems.forEach((item) => {
-        if (watchlistIds.includes(item.id)) {
-          libraryMap.set(item.id, {
-            ...item,
-            posterImage: getSafeCoverImage(item.posterImage),
-          });
-        }
+        libraryMap.set(String(item.id), {
+          ...item,
+          id: String(item.id),
+          posterImage: getSafeCoverImage(item.posterImage),
+        });
       });
 
       const libraryList = Array.from(libraryMap.values());

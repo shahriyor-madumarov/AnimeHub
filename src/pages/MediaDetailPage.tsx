@@ -19,11 +19,11 @@ import {
 } from '../lib/api';
 import { MediaItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { isValidAnimeCoverImage } from '../services/models/normalized';
 import {
   getSafeCoverImage,
   getSafeBannerImage,
   isValidMediaCoverImage,
+  isValidAnimeCoverImage,
   ANIMEHUB_COVER_FALLBACK,
   ANIMEHUB_BANNER_FALLBACK,
 } from '../lib/mediaImage';

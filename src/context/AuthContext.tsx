@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -24,7 +24,12 @@ export interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
-  signUp: (email: string, password: string, displayName?: string) => Promise<SignUpResult>;
+  signUp: (
+    email: string,
+    password: string,
+    displayName?: string,
+    metadata?: { username?: string; dateOfBirth?: string }
+  ) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<SignOutResult>;
   
@@ -47,14 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
-  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+  const openAuthModal = useCallback((mode: 'login' | 'register' = 'login') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
-  };
+  }, []);
 
-  const closeAuthModal = () => {
+  const closeAuthModal = useCallback(() => {
     setIsAuthModalOpen(false);
-  };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -93,7 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string, displayName?: string): Promise<SignUpResult> => {
+  const signUp = useCallback(async (
+    email: string,
+    password: string,
+    displayName?: string,
+    metadata?: { username?: string; dateOfBirth?: string }
+  ): Promise<SignUpResult> => {
     if (!isSupabaseConfigured) {
       return {
         user: null,
@@ -105,7 +115,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const cleanEmail = email.trim();
-      const name = displayName?.trim() || cleanEmail.split('@')[0];
+      const username = metadata?.username?.trim() || displayName?.trim() || cleanEmail.split('@')[0];
+      const name = displayName?.trim() || username;
+      const dateOfBirth = metadata?.dateOfBirth?.trim() || undefined;
 
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -113,7 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             display_name: name,
-            username: name,
+            username,
+            date_of_birth: dateOfBirth,
           },
         },
       });
@@ -149,9 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: err instanceof Error ? err : new Error(String(err)),
       };
     }
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string): Promise<SignInResult> => {
+  const signIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
     if (!isSupabaseConfigured) {
       return {
         user: null,
@@ -192,9 +205,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: err instanceof Error ? err : new Error(String(err)),
       };
     }
-  };
+  }, []);
 
-  const signOut = async (): Promise<SignOutResult> => {
+  const signOut = useCallback(async (): Promise<SignOutResult> => {
     if (!isSupabaseConfigured) {
       setUser(null);
       setSession(null);
@@ -211,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       return { error: err instanceof Error ? err : new Error(String(err)) };
     }
-  };
+  }, []);
 
   const value = useMemo<AuthContextType>(
     () => ({

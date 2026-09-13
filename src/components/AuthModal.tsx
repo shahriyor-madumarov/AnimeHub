@@ -11,6 +11,7 @@ import {
   LogIn,
   UserPlus,
   Info,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,6 +32,7 @@ export function AuthModal() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -46,6 +48,7 @@ export function AuthModal() {
       setShowEmailConfirmNotice(false);
       setPassword('');
       setConfirmPassword('');
+      setDateOfBirth('');
     }
   }, [isAuthModalOpen, authModalMode]);
 
@@ -115,7 +118,10 @@ export function AuthModal() {
       }
 
       setIsSubmitting(true);
-      const res = await signUp(cleanEmail, password, displayName);
+      const res = await signUp(cleanEmail, password, displayName, {
+        username: displayName,
+        dateOfBirth: dateOfBirth || undefined,
+      });
       setIsSubmitting(false);
 
       if (res.error) {
@@ -350,6 +356,28 @@ export function AuthModal() {
                       <Eye className="w-4 h-4" />
                     )}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Date of Birth (Register only) */}
+            {authModalMode === 'register' && (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  Date of Birth (Optional)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="auth-dob-input"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-[#0a0c14] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors"
+                  />
                 </div>
               </div>
             )}

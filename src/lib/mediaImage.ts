@@ -170,6 +170,8 @@ export function isValidMediaCoverImage(url?: string | null): boolean {
   }
 }
 
+export const isValidAnimeCoverImage = isValidMediaCoverImage;
+
 /**
  * Sanitizes and returns a guaranteed valid cover image.
  * If the original image is missing, invalid, or an Unsplash/Pexels link, returns ANIMEHUB_COVER_FALLBACK.

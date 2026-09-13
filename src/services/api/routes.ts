@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import {
   animeService,
   mangaService,
@@ -58,6 +59,265 @@ apiRouter.get('/health', async (req: Request, res: Response) => {
     },
     cache: globalCache.getStats(),
   });
+});
+
+// ----------------------------------------------------
+// Authentication Helper & Endpoints
+// ----------------------------------------------------
+function formatSupabaseUrl(url: string): string {
+  const clean = url.trim().replace(/\/+$/, '');
+  const withoutProtocol = clean.replace(/^https?:\/\//, '');
+  if (!withoutProtocol.includes('.')) {
+    return `https://${withoutProtocol}.supabase.co`;
+  }
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    return `https://${clean}`;
+  }
+  return clean;
+}
+
+async function getAuthenticatedUser(req: Request) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, client: null, error: 'Missing or invalid Authorization header', status: 401 };
+  }
+
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    return { user: null, client: null, error: 'Empty bearer token', status: 401 };
+  }
+
+  const rawUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+  const rawKey = (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+
+  if (!rawUrl || !rawKey) {
+    return {
+      user: null,
+      client: null,
+      error: 'Supabase authentication service is not configured',
+      status: 503,
+    };
+  }
+
+  const supabaseUrl = formatSupabaseUrl(rawUrl);
+  const client = createClient(supabaseUrl, rawKey, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+  const {
+    data: { user },
+    error: userError,
+  } = await client.auth.getUser(token);
+
+  if (userError || !user) {
+    return {
+      user: null,
+      client: null,
+      error: userError?.message || 'Invalid or expired session token',
+      status: 401,
+    };
+  }
+
+  return { user, client, error: null, status: 200 };
+}
+
+// Profile Endpoint
+apiRouter.get('/auth/profile', async (req: Request, res: Response) => {
+  try {
+    const auth = await getAuthenticatedUser(req);
+    if (auth.error || !auth.user || !auth.client) {
+      return res.status(auth.status).json({
+        error: 'Unauthorized',
+        message: auth.error,
+      });
+    }
+
+    const { user, client } = auth;
+    let profileData: any = null;
+    try {
+      const { data: dbProfile } = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      profileData = dbProfile;
+    } catch {
+      // Continue with metadata if table/query unavailable
+    }
+
+    return res.json({
+      status: 'ok',
+      user: {
+        id: user.id,
+        email: user.email,
+        email_confirmed_at: user.email_confirmed_at,
+        created_at: user.created_at,
+        user_metadata: user.user_metadata,
+      },
+      profile: profileData || {
+        id: user.id,
+        username: user.user_metadata?.username || user.user_metadata?.display_name || user.email?.split('@')[0],
+        display_name: user.user_metadata?.display_name || user.user_metadata?.username || user.email?.split('@')[0],
+        date_of_birth: user.user_metadata?.date_of_birth || null,
+        created_at: user.created_at,
+      },
+    });
+  } catch (err: any) {
+    console.error('[API Auth Profile Error]', err);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: err?.message || 'Failed to verify authentication token',
+    });
+  }
+});
+
+// ----------------------------------------------------
+// Watchlist / Library Endpoints (/api/watchlist, /api/library)
+// ----------------------------------------------------
+apiRouter.get(['/watchlist', '/library'], async (req: Request, res: Response) => {
+  try {
+    const auth = await getAuthenticatedUser(req);
+    if (auth.error || !auth.user || !auth.client) {
+      return res.status(auth.status).json({
+        error: 'Unauthorized',
+        message: auth.error,
+      });
+    }
+
+    const { data, error } = await auth.client
+      .from('saved_items')
+      .select('*')
+      .eq('user_id', auth.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({
+        error: 'Database Error',
+        message: error.message,
+      });
+    }
+
+    return res.json({
+      status: 'ok',
+      count: data ? data.length : 0,
+      data: data || [],
+    });
+  } catch (err: any) {
+    console.error('[API Watchlist GET Error]', err);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: err?.message || 'Failed to fetch watchlist',
+    });
+  }
+});
+
+apiRouter.post(['/watchlist', '/library'], async (req: Request, res: Response) => {
+  try {
+    const auth = await getAuthenticatedUser(req);
+    if (auth.error || !auth.user || !auth.client) {
+      return res.status(auth.status).json({
+        error: 'Unauthorized',
+        message: auth.error,
+      });
+    }
+
+    const item = req.body;
+    if (!item || !item.id || !item.title) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Missing media item payload or invalid id/title',
+      });
+    }
+
+    const row = {
+      user_id: auth.user.id,
+      media_id: String(item.id),
+      media_type: item.type || 'ANIME',
+      title: item.title,
+      english_title: item.englishTitle || null,
+      poster_image: item.posterImage || '',
+      banner_image: item.bannerImage || null,
+      rating: typeof item.rating === 'number' ? item.rating : null,
+      format: item.format || null,
+      status: item.status || null,
+      release_year: typeof item.releaseYear === 'number' ? item.releaseYear : null,
+      genres: Array.isArray(item.genres) ? item.genres : [],
+      episodes: typeof item.episodes === 'number' ? item.episodes : null,
+      chapters: typeof item.chapters === 'number' ? item.chapters : null,
+      studio_or_author: item.studioOrAuthor || null,
+      source_provider: item.sourceProvider || null,
+      media_snapshot: item,
+    };
+
+    const { data, error } = await auth.client
+      .from('saved_items')
+      .upsert(row, { onConflict: 'user_id,media_id' })
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      return res.status(500).json({
+        error: 'Database Error',
+        message: error.message,
+      });
+    }
+
+    return res.status(201).json({
+      status: 'ok',
+      data: data || row,
+    });
+  } catch (err: any) {
+    console.error('[API Watchlist POST Error]', err);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: err?.message || 'Failed to save item to watchlist',
+    });
+  }
+});
+
+apiRouter.delete(['/watchlist/:mediaId', '/library/:mediaId'], async (req: Request, res: Response) => {
+  try {
+    const auth = await getAuthenticatedUser(req);
+    if (auth.error || !auth.user || !auth.client) {
+      return res.status(auth.status).json({
+        error: 'Unauthorized',
+        message: auth.error,
+      });
+    }
+
+    const mediaId = req.params.mediaId;
+    if (!mediaId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Missing mediaId parameter',
+      });
+    }
+
+    const { error } = await auth.client
+      .from('saved_items')
+      .delete()
+      .eq('user_id', auth.user.id)
+      .eq('media_id', mediaId);
+
+    if (error) {
+      return res.status(500).json({
+        error: 'Database Error',
+        message: error.message,
+      });
+    }
+
+    return res.json({
+      status: 'ok',
+      message: 'Item removed from library',
+    });
+  } catch (err: any) {
+    console.error('[API Watchlist DELETE Error]', err);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: err?.message || 'Failed to delete item from watchlist',
+    });
+  }
 });
 
 // ----------------------------------------------------

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090a0f"/>
+      <stop offset="50%" stop-color="#121420"/>
+      <stop offset="100%" stop-color="#090a0f"/>
+    </linearGradient>
+    <linearGradient id="roseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.25"/>
+      <stop offset="60%" stop-color="#f43f5e" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#090a0f" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Subtle Framing Border -->
+  <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+
+  <!-- Center Content -->
+  <g transform="translate(600, 240)">
+    <!-- Brand Icon -->
+    <rect x="-64" y="-120" width="128" height="128" rx="36" fill="url(#roseGrad)"/>
+    <rect x="-62" y="-118" width="124" height="124" rx="34" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="2"/>
+    <path d="M -16 -76 C -16 -82 -10 -85 -5 -82 L 28 -58 C 33 -55 33 -49 28 -46 L -5 -22 C -10 -19 -16 -22 -16 -28 Z" fill="#ffffff"/>
+
+    <!-- Brand Name -->
+    <text x="0" y="70" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Outfit', sans-serif" font-size="64" font-weight="900" letter-spacing="-1">
+      <tspan fill="#ffffff">Anime</tspan><tspan fill="#f43f5e">Hub</tspan>
+    </text>
+
+    <!-- Subtitle / Tagline -->
+    <text x="0" y="125" text-anchor="middle" fill="#cbd5e1" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif" font-size="26" font-weight="600" letter-spacing="0.5">
+      Discover Anime, Manga &amp; Manhwa
+    </text>
+
+    <!-- Feature Pills -->
+    <text x="0" y="180" text-anchor="middle" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif" font-size="16" font-weight="500" letter-spacing="2">
+      TRENDING TITLES  •  DETAILED CATALOGS  •  LATEST NEWS  •  IMMERSIVE PREVIEWS
+    </text>
+  </g>
+</svg>

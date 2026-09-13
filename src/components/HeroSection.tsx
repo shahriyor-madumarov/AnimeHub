@@ -63,6 +63,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ featuredItems }) => {
           key={`${activeItem.id}-${bannerSrc}`}
           src={bannerSrc}
           alt={displayTitle}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          referrerPolicy="no-referrer"
           onError={handleBannerError}
           className="w-full h-full object-cover object-center scale-100 animate-fadeIn transition-transform duration-1000 ease-out"
         />

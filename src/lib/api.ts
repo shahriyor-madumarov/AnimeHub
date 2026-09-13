@@ -3,9 +3,19 @@ import { MediaItem, PaginatedResponse, FilterParams, NewsArticle } from '../type
 /**
  * Universal client-side API helper.
  * Communicates strictly with the AnimeHub Express server API layer (/api/*).
+ * Includes lightweight in-flight deduplication and 60-second in-memory caching to avoid redundant requests.
  */
 
-async function fetchJson<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+interface CacheEntry<T> {
+  data: T;
+  expiry: number;
+}
+
+const apiCache = new Map<string, CacheEntry<any>>();
+const inFlightRequests = new Map<string, Promise<any>>();
+const DEFAULT_TTL_MS = 60 * 1000; // 60 seconds
+
+async function fetchJson<T>(endpoint: string, params?: Record<string, any>, ttlMs = DEFAULT_TTL_MS): Promise<T> {
   // Guarantee that same-origin API requests always target /api/*
   let url = endpoint;
   if (!url.startsWith('/api') && !url.startsWith('http')) {
@@ -24,17 +34,43 @@ async function fetchJson<T>(endpoint: string, params?: Record<string, any>): Pro
     }
   }
 
-  const res = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`API request to ${endpoint} failed with status ${res.status}`);
+  // 1. Return fresh cached response if available
+  const now = Date.now();
+  const cached = apiCache.get(url);
+  if (cached && cached.expiry > now) {
+    return cached.data as T;
   }
 
-  return res.json();
+  // 2. Reuse active in-flight request to deduplicate concurrent calls
+  if (inFlightRequests.has(url)) {
+    return inFlightRequests.get(url)! as Promise<T>;
+  }
+
+  // 3. Initiate network request
+  const requestPromise = (async () => {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`API request to ${endpoint} failed with status ${res.status}`);
+      }
+
+      const data = (await res.json()) as T;
+      if (ttlMs > 0) {
+        apiCache.set(url, { data, expiry: Date.now() + ttlMs });
+      }
+      return data;
+    } finally {
+      inFlightRequests.delete(url);
+    }
+  })();
+
+  inFlightRequests.set(url, requestPromise);
+  return requestPromise;
 }
 
 // ---------------- ANIME API ----------------

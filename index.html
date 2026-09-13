@@ -3,12 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AnimeHub - Discover Anime, Manga & Manhwa</title>
+    <meta name="theme-color" content="#090a0f" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Authoritative Document Title & SEO Description -->
+    <title>AnimeHub - Discover Anime, Manga &amp; Manhwa</title>
     <meta name="description" content="A modern, premium anime, manga, and manhwa discovery platform featuring trending titles, detailed catalogs, news, and immersive previews." />
-    <meta property="og:title" content="AnimeHub - Discover Anime, Manga & Manhwa" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="__APP_CANONICAL_URL__" />
+
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:site_name" content="AnimeHub" />
+    <meta property="og:title" content="AnimeHub - Discover Anime, Manga &amp; Manhwa" />
     <meta property="og:description" content="A modern, premium anime, manga, and manhwa discovery platform featuring trending titles, detailed catalogs, news, and immersive previews." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="__APP_CANONICAL_URL__" />
+    <meta property="og:image" content="__APP_OG_IMAGE__" />
+    <meta property="og:image:alt" content="AnimeHub - Discover Anime, Manga &amp; Manhwa" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AnimeHub - Discover Anime, Manga &amp; Manhwa" />
+    <meta name="twitter:description" content="A modern, premium anime, manga, and manhwa discovery platform featuring trending titles, detailed catalogs, news, and immersive previews." />
+    <meta name="twitter:image" content="__APP_OG_IMAGE__" />
+    <meta name="twitter:image:alt" content="AnimeHub - Discover Anime, Manga &amp; Manhwa" />
+
+    <!-- Runtime Canonical Resolution Guard (Prevents Localhost or Missing Origin) -->
+    <script>
+      (function() {
+        try {
+          var c = document.querySelector('link[rel="canonical"]');
+          if (c && (!c.getAttribute('href') || c.getAttribute('href') === '/' || c.getAttribute('href').indexOf('__APP_') !== -1)) {
+            c.setAttribute('href', window.location.origin + window.location.pathname);
+          }
+          var og = document.querySelector('meta[property="og:url"]');
+          if (og && (!og.getAttribute('content') || og.getAttribute('content') === '/' || og.getAttribute('content').indexOf('__APP_') !== -1)) {
+            og.setAttribute('content', window.location.origin + window.location.pathname);
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
